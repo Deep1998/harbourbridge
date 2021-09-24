@@ -435,9 +435,23 @@ func getSeekable(f *os.File) (*os.File, int64, error) {
 	return fcopy, n, nil
 }
 
+func dialectToTarget(dialect adminpb.DatabaseDialect) string {
+	if dialect == adminpb.DatabaseDialect_POSTGRESQL {
+		return TARGET_EXPERIMENTAL_POSTGRES
+	}
+	return TARGET_SPANNER
+}
+
+func targetToDialect(targetdb string) adminpb.DatabaseDialect {
+	if targetdb == TARGET_EXPERIMENTAL_POSTGRES {
+		return adminpb.DatabaseDialect_POSTGRESQL
+	}
+	return adminpb.DatabaseDialect_GOOGLE_STANDARD_SQL
+}
+
 // VerifyDb checks whether the db exists and if it does, verifies if the schema is what we currently support.
-func VerifyDb(ctx context.Context, adminClient *database.DatabaseAdminClient, dbURI string) (dbExists bool, err error) {
-	dbExists, err = CheckExistingDb(ctx, adminClient, dbURI)
+func VerifyDb(ctx context.Context, adminClient *database.DatabaseAdminClient, dbURI string, conv *internal.Conv) (dbExists bool, err error) {
+	dbExists, err = CheckExistingDb(ctx, adminClient, dbURI, conv)
 	if err != nil {
 		return dbExists, err
 	}
@@ -448,13 +462,18 @@ func VerifyDb(ctx context.Context, adminClient *database.DatabaseAdminClient, db
 }
 
 // CheckExistingDb checks whether the database with dbURI exists or not.
-func CheckExistingDb(ctx context.Context, adminClient *database.DatabaseAdminClient, dbURI string) (bool, error) {
-	_, err := adminClient.GetDatabase(ctx, &adminpb.GetDatabaseRequest{Name: dbURI})
+func CheckExistingDb(ctx context.Context, adminClient *database.DatabaseAdminClient, dbURI string, conv *internal.Conv) (bool, error) {
+	resp, err := adminClient.GetDatabase(ctx, &adminpb.GetDatabaseRequest{Name: dbURI})
 	if err != nil {
 		if containsAny(strings.ToLower(err.Error()), []string{"database not found"}) {
 			return false, nil
 		}
 		return false, fmt.Errorf("can't get database info: %s", err)
+	}
+	targetDB := dialectToTarget(resp.DatabaseDialect)
+	if targetDB != conv.TargetDb {
+		return true, fmt.Errorf(`found existing database of type %s while target-db flag is set 
+		to %s. Please rerun schema migration with target-db as %s`, targetDB, conv.TargetDb, targetDB)
 	}
 	return true, nil
 }
@@ -473,7 +492,7 @@ func ValidateDDL(ctx context.Context, adminClient *database.DatabaseAdminClient,
 }
 
 func CreateOrUpdateDatabase(ctx context.Context, adminClient *database.DatabaseAdminClient, dbURI string, conv *internal.Conv, out *os.File) error {
-	dbExists, err := VerifyDb(ctx, adminClient, dbURI)
+	dbExists, err := VerifyDb(ctx, adminClient, dbURI, conv)
 	if err != nil {
 		return err
 	}
@@ -503,12 +522,12 @@ func CreateDatabase(ctx context.Context, adminClient *database.DatabaseAdminClie
 	// using backticks (to avoid any issues with Spanner reserved words).
 	// Foreign Keys are set to false since we create them post data migration.
 	schema := conv.SpSchema.GetDDL(ddl.Config{Comments: false, ProtectIds: true, Tables: true, ForeignKeys: false})
+	databaseDialect := targetToDialect(conv.TargetDb)
 	req := &adminpb.CreateDatabaseRequest{
 		Parent:          fmt.Sprintf("projects/%s/instances/%s", project, instance),
 		CreateStatement: "CREATE DATABASE `" + dbName + "`",
 		ExtraStatements: schema,
-		// TODO(agasheesh): Set database_dialect optionally as following.
-		// DatabaseDialect: adminpb.DatabaseDialect_POSTGRESQL,
+		DatabaseDialect: databaseDialect,
 	}
 	op, err := adminClient.CreateDatabase(ctx, req)
 	if err != nil {

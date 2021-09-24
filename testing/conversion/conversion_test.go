@@ -216,13 +216,15 @@ func TestVerifyDb(t *testing.T) {
 
 	for _, tc := range testCases {
 		dbURI := fmt.Sprintf("projects/%s/instances/%s/databases/%s", projectID, instanceID, tc.dbName)
+		conv := BuildConv(t, 2, 0, tc.emptySchema)
+		conv.TargetDb = conversion.TARGET_SPANNER
 		if tc.dbExists {
-			err := conversion.CreateDatabase(ctx, databaseAdmin, dbURI, BuildConv(t, 2, 0, tc.emptySchema), os.Stdout)
+			err := conversion.CreateDatabase(ctx, databaseAdmin, dbURI, conv, os.Stdout)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer dropDatabase(t, dbURI)
-			dbExists, err := conversion.VerifyDb(ctx, databaseAdmin, dbURI)
+			dbExists, err := conversion.VerifyDb(ctx, databaseAdmin, dbURI, conv)
 			assert.True(t, dbExists)
 			if tc.emptySchema {
 				assert.Nil(t, err)
@@ -230,7 +232,7 @@ func TestVerifyDb(t *testing.T) {
 				assert.NotNil(t, err)
 			}
 		} else {
-			dbExists, err := conversion.VerifyDb(ctx, databaseAdmin, dbURI)
+			dbExists, err := conversion.VerifyDb(ctx, databaseAdmin, dbURI, conv)
 			assert.Nil(t, err)
 			assert.False(t, dbExists)
 		}
@@ -255,7 +257,9 @@ func TestCheckExistingDb(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		dbExists, err := conversion.CheckExistingDb(ctx, databaseAdmin, fmt.Sprintf("projects/%s/instances/%s/databases/%s", projectID, instanceID, tc.dbName))
+		conv := internal.MakeConv()
+		conv.TargetDb = conversion.TARGET_SPANNER
+		dbExists, err := conversion.CheckExistingDb(ctx, databaseAdmin, fmt.Sprintf("projects/%s/instances/%s/databases/%s", projectID, instanceID, tc.dbName), conv)
 		assert.Nil(t, err)
 		assert.Equal(t, tc.dbExists, dbExists)
 	}
