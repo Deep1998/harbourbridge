@@ -511,6 +511,16 @@ func TestProcessPgDump(t *testing.T) {
 				spannerData{table: "test", cols: []string{"a", "b", "n"}, vals: []interface{}{"a42", "b6", int64(2)}}},
 		},
 		{
+			name: "INSERT with multiple rows",
+			input: "CREATE TABLE test (a text NOT NULL, b text NOT NULL, n bigint);\n" +
+				"ALTER TABLE ONLY test ADD CONSTRAINT test_pkey PRIMARY KEY (a, b);" +
+				"INSERT INTO test (a, b, n) VALUES ('a42', 'b6', 2), ('a43', 'b7', 3);",
+			expectedData: []spannerData{
+				spannerData{table: "test", cols: []string{"a", "b", "n"}, vals: []interface{}{"a42", "b6", int64(2)}},
+				spannerData{table: "test", cols: []string{"a", "b", "n"}, vals: []interface{}{"a43", "b7", int64(3)}},
+			},
+		},
+		{
 			name: "INSERT with no cols",
 			input: "CREATE TABLE test (a text NOT NULL, b text NOT NULL, n bigint);\n" +
 				"ALTER TABLE ONLY test ADD CONSTRAINT test_pkey PRIMARY KEY (a, b);" +
@@ -699,15 +709,14 @@ COPY test (id, a, b, c, d, e) FROM stdin;
 func TestProcessPgDump_GetDDL(t *testing.T) {
 	conv, _ := runProcessPgDump("CREATE TABLE cart (productid text, userid text, quantity bigint);\n" +
 		"ALTER TABLE ONLY cart ADD CONSTRAINT cart_pkey PRIMARY KEY (productid, userid);")
-	expected := "CREATE TABLE cart (\n" +
-		"productid STRING(MAX) NOT NULL,\n" +
-		"userid STRING(MAX) NOT NULL,\n" +
-		"quantity INT64\n" +
-		") PRIMARY KEY (productid, userid)"
-	// normalizeSpace isn't perfect, but it handles most of the
-	// usual discretionary space issues.
+	expected :=
+`CREATE TABLE cart (
+  productid STRING(MAX) NOT NULL,
+  userid STRING(MAX) NOT NULL,
+  quantity INT64,
+) PRIMARY KEY (productid, userid)`
 	c := ddl.Config{Tables: true}
-	assert.Equal(t, normalizeSpace(expected), normalizeSpace(strings.Join(conv.SpSchema.GetDDL(c), " ")))
+	assert.Equal(t, expected, strings.Join(conv.SpSchema.GetDDL(c), " "))
 }
 
 func TestProcessPgDump_Rows(t *testing.T) {
@@ -831,10 +840,6 @@ func stripSchemaComments(spSchema map[string]ddl.CreateTable) map[string]ddl.Cre
 		spSchema[t] = ct
 	}
 	return spSchema
-}
-
-func normalizeSpace(s string) string {
-	return strings.Join(strings.Fields(s), " ")
 }
 
 func bitReverse(i int64) int64 {
