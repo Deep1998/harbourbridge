@@ -86,7 +86,9 @@ func ConvertData(conv *internal.Conv, srcTable string, srcCols []string, vals []
 		}
 		var x interface{}
 		var err error
-		if spColDef.T.IsArray {
+		if vals[i] == "HARBOURBRIDGE_INTERNAL_NULL_STRING" {
+			x, err = nil, nil
+		} else if spColDef.T.IsArray {
 			x, err = convArray(spColDef.T, srcColDef.Type.Name, conv.Location, vals[i])
 		} else {
 			x, err = convScalar(conv, spColDef.T, srcColDef.Type.Name, conv.Location, vals[i])
