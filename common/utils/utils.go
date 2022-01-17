@@ -13,6 +13,8 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"reflect"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -22,6 +24,9 @@ import (
 	instance "cloud.google.com/go/spanner/admin/instance/apiv1"
 	"cloud.google.com/go/storage"
 	"github.com/cloudspannerecosystem/harbourbridge/common/constants"
+	"github.com/cloudspannerecosystem/harbourbridge/internal"
+	"github.com/cloudspannerecosystem/harbourbridge/sources/common"
+	"github.com/cloudspannerecosystem/harbourbridge/sources/spanner"
 	"golang.org/x/crypto/ssh/terminal"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -51,7 +56,7 @@ func NewIOStreams(driver string, dumpFile string) IOStreams {
 		if u.Scheme == "gs" {
 			bucketName := u.Host
 			filePath := u.Path[1:] // removes "/" from beginning of path
-			f, err = downloadFromGCS(bucketName, filePath)
+			f, err = DownloadFromGCS(bucketName, filePath, "harbourbridge.gcs.data")
 		} else {
 			f, err = os.Open(dumpFile)
 		}
@@ -64,8 +69,8 @@ func NewIOStreams(driver string, dumpFile string) IOStreams {
 	return io
 }
 
-// downloadFromGCS returns the dump file that is downloaded from GCS
-func downloadFromGCS(bucketName string, filePath string) (*os.File, error) {
+// DownloadFromGCS returns the dump file that is downloaded from GCS
+func DownloadFromGCS(bucketName, filePath, tmpFile string) (*os.File, error) {
 	ctx := context.Background()
 
 	client, err := storage.NewClient(ctx)
@@ -85,7 +90,7 @@ func downloadFromGCS(bucketName string, filePath string) (*os.File, error) {
 	defer rc.Close()
 	r := bufio.NewReader(rc)
 
-	tmpfile, err := ioutil.TempFile("", "harbourbridge.gcs.data")
+	tmpfile, err := ioutil.TempFile("", tmpFile)
 	if err != nil {
 		fmt.Printf("saveFile: unable to open temporary file to save dump file from GCS bucket %v", err)
 		log.Fatal(err)
@@ -289,6 +294,12 @@ func ContainsAny(s string, l []string) bool {
 	return false
 }
 
+func ValueSetEqual(a, b []string) bool {
+	sort.Strings(a)
+	sort.Strings(b)
+	return reflect.DeepEqual(a, b)
+}
+
 func GetFileSize(f *os.File) (int64, error) {
 	info, err := f.Stat()
 	if err != nil {
@@ -414,4 +425,23 @@ func IsLegacyModeSupportedDriver(driver string) bool {
 
 func GetLegacyModeSupportedDrivers() []string {
 	return GetValidDrivers()[:5]
+}
+
+func ReadSpannerSchema(ctx context.Context, conv *internal.Conv, client *sp.Client) error {
+	infoSchema := spanner.InfoSchemaImpl{Client: client, Ctx: ctx, TargetDb: conv.TargetDb}
+	err := common.ProcessSchema(conv, infoSchema)
+	if err != nil {
+		return fmt.Errorf("error trying to read and convert spanner schema: %v", err)
+	}
+	parentTables, err := infoSchema.GetInterleaveTables()
+	if err != nil {
+		return fmt.Errorf("error trying to fetch interleave table info from schema: %v", err)
+	}
+	// Assign parents if any.
+	for table, parent := range parentTables {
+		spTable := conv.SpSchema[table]
+		spTable.Parent = parent
+		conv.SpSchema[table] = spTable
+	}
+	return nil
 }

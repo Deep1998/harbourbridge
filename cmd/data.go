@@ -136,7 +136,7 @@ func (cmd *DataCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface
 		}
 	}
 
-	bw, err := conversion.DataConv(sourceProfile, targetProfile, &ioHelper, client, conv, true)
+	bw, err := conversion.DataConv(ctx, sourceProfile, targetProfile, &ioHelper, client, conv, true)
 	if err != nil {
 		err = fmt.Errorf("can't finish data conversion for db %s: %v", dbURI, err)
 		return subcommands.ExitFailure
