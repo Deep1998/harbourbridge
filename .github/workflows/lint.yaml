@@ -29,11 +29,12 @@ jobs:
       - run: export PATH=${PATH}:`go env GOPATH`/bin
       - run: echo $PATH
       - run: echo $(go env GOPATH)
-      - run: echo $(ls `go env GOPATH`/bin/)
+      - run: echo $(ls /home/runner/go/bin/)
+      - run: echo $(ls .)
+      - run: echo $(ls $HOME)
       - run: go version
       - run: go vet .
       - run: go get golang.org/x/tools/cmd/goimports && test -z $(goimports -l .)
-      - run: echo $(ls `go env GOPATH`/bin/)
       - run: echo $(ls `go env GOPATH`/bin/)
       - run: go get golang.org/x/lint/golint && golint .
       - run: echo $(ls `go env GOPATH`/bin/)
