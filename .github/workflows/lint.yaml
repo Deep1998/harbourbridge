@@ -35,6 +35,7 @@ jobs:
       - run: go version
       - run: go vet .
       - run: go get golang.org/x/tools/cmd/goimports && test -z $(goimports -l .)
+      - run: find $HOME | grep bin/goimports
       - run: echo $(ls `go env GOPATH`/bin/)
       - run: go get golang.org/x/lint/golint && golint .
       - run: echo $(ls `go env GOPATH`/bin/)
