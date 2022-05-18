@@ -126,6 +126,8 @@ func (cmd *SchemaAndDataCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...
 		panic(err)
 	}
 
+	schemaCoversionEndTime := time.Now()
+	conv.SchemaConversionDuration = schemaCoversionEndTime.Sub(schemaConversionStartTime)
 	// Populate migration request id and migration type in conv object
 	conv.MigrationRequestId = "HB-" + uuid.New().String()
 	conv.MigrationType = migration.MigrationData_SCHEMA_AND_DATA.Enum()
@@ -163,21 +165,31 @@ func (cmd *SchemaAndDataCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...
 		return subcommands.ExitFailure
 	}
 
-	schemaCoversionEndTime := time.Now()
-	conv.SchemaConversionDuration = schemaCoversionEndTime.Sub(schemaConversionStartTime)
-	bw, err := conversion.DataConv(ctx, sourceProfile, targetProfile, &ioHelper, client, conv, true, cmd.writeLimit)
+	streamingCfg, err := startDatastream(ctx, sourceProfile, targetProfile)
 	if err != nil {
-		err = fmt.Errorf("can't finish data conversion for db %s: %v", dbURI, err)
+		err = fmt.Errorf("error starting datastream: %v", err)
 		return subcommands.ExitFailure
 	}
+
+	bw, err := performSnapshotMigration(ctx, sourceProfile, targetProfile, ioHelper, client, conv, cmd.writeLimit, dbURI)
+	if err != nil {
+		err = fmt.Errorf("can't do snapshot migration: %v", err)
+		return subcommands.ExitFailure
+	}
+
+	err = startDataflow(ctx, sourceProfile, targetProfile, streamingCfg)
+	if err != nil {
+		err = fmt.Errorf("error starting dataflow: %v", err)
+		return subcommands.ExitFailure
+	}
+
 	if !cmd.skipForeignKeys {
 		if err = conversion.UpdateDDLForeignKeys(ctx, adminClient, dbURI, conv, ioHelper.Out); err != nil {
 			err = fmt.Errorf("can't perform update schema on db %s with foreign keys: %v", dbURI, err)
 			return subcommands.ExitFailure
 		}
 	}
-	dataCoversionEndTime := time.Now()
-	conv.DataConversionDuration = dataCoversionEndTime.Sub(schemaCoversionEndTime)
+
 	banner := utils.GetBanner(schemaConversionStartTime, dbURI)
 	conversion.Report(sourceProfile.Driver, bw.DroppedRowsByTable(), ioHelper.BytesRead, banner, conv, cmd.filePrefix+reportFile, ioHelper.Out)
 	conversion.WriteBadData(bw, conv, banner, cmd.filePrefix+badDataFile, ioHelper.Out)

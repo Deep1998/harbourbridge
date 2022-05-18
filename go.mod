@@ -4,7 +4,8 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.100.2
-	cloud.google.com/go/compute v1.5.0 // indirect
+	cloud.google.com/go/dataflow v0.3.0
+	cloud.google.com/go/datastream v0.3.0
 	cloud.google.com/go/iam v0.3.0 // indirect
 	cloud.google.com/go/spanner v1.30.0
 	cloud.google.com/go/storage v1.21.0

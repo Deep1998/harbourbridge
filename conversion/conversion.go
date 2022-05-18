@@ -138,6 +138,9 @@ func connectionConfig(sourceProfile profiles.SourceProfile) (interface{}, error)
 		// If empty, this is called as part of the legacy mode witih global CLI flags.
 		// When using source-profile mode is used, the sqlConnectionStr is already populated.
 		mysqlConn := sourceProfile.Conn.Mysql
+		if sourceProfile.Ty == profiles.SourceProfileTypeStreaming {
+			mysqlConn = sourceProfile.Streaming.MySQL.Conn
+		}
 		if !(mysqlConn.Host != "" && mysqlConn.User != "" && mysqlConn.Db != "") {
 			return profiles.GenerateMYSQLConnectionStr()
 		} else {
@@ -264,7 +267,7 @@ func dataFromDump(driver string, config writer.BatchWriterConfig, ioHelper *util
 
 func dataFromCSV(ctx context.Context, sourceProfile profiles.SourceProfile, targetProfile profiles.TargetProfile, config writer.BatchWriterConfig, conv *internal.Conv, client *sp.Client) (*writer.BatchWriter, error) {
 	if targetProfile.Conn.Sp.Dbname == "" {
-		return nil, fmt.Errorf("dbname is mandatory in target-profile for csv source")
+		return nil, fmt.Errorf("dbName is mandatory in target-profile for csv source")
 	}
 	conv.TargetDb = targetProfile.ToLegacyTargetDb()
 	dialect, err := targetProfile.FetchTargetDialect(ctx)
