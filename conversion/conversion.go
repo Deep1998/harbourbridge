@@ -458,6 +458,7 @@ func CreateOrUpdateDatabase(ctx context.Context, adminClient *database.DatabaseA
 	}
 	// Adding migration metadata to the outgoing context.
 	migrationData := metrics.GetMigrationData(conv, driver, targetDb, constants.SchemaConv)
+	fmt.Println(migrationData.String())
 	serializedMigrationData, _ := proto.Marshal(migrationData)
 	migrationMetadataValue := base64.StdEncoding.EncodeToString(serializedMigrationData)
 	ctx = metadata.AppendToOutgoingContext(ctx, migrationMetadataKey, migrationMetadataValue)
