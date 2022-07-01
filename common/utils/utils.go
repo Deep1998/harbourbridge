@@ -170,6 +170,44 @@ func PreloadGCSFiles(tables []ManifestTable) ([]ManifestTable, error) {
 	return tables, nil
 }
 
+func WriteToGCS(filePath, fileName, data string) error {
+	ctx := context.Background()
+
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		fmt.Printf("Failed to create GCS client")
+		return err
+	}
+	defer client.Close()
+	u, err := url.Parse(filePath)
+	if err != nil {
+		fmt.Printf("parseFilePath: unable to parse file path %s", filePath)
+		return err
+	}
+	if u.Scheme != "gs" {
+		fmt.Printf("not a valid GCS path: %s, should start with 'gs'", filePath)
+		return err
+	}
+	bucketName := u.Host
+	prefix := u.Path[1:]
+	if prefix[len(prefix)-1] != '/' {
+		prefix = prefix + "/"
+	}
+	bucket := client.Bucket(bucketName)
+	obj := bucket.Object(prefix + fileName)
+
+	w := obj.NewWriter(ctx)
+	if _, err := fmt.Fprint(w, data); err != nil {
+		fmt.Printf("Failed to write to Cloud Storage: %s", filePath)
+		return err
+	}
+	if err := w.Close(); err != nil {
+		fmt.Printf("Failed to close GCS file: %s", filePath)
+		return err
+	}
+	return nil
+}
+
 // GetProject returns the cloud project we should use for accessing Spanner.
 // Use environment variable GCLOUD_PROJECT if it is set.
 // Otherwise, use the default project returned from gcloud.
