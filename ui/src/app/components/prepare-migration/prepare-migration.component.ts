@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { TargetDetailsFormComponent } from '../target-details-form/target-details-form.component';
 
 @Component({
   selector: 'app-prepare-migration',
@@ -12,9 +14,19 @@ export class PrepareMigrationComponent implements OnInit {
     'Source',
     'Destination',
   ]
-  constructor() { }
+  constructor(private dialog: MatDialog) { }
 
   ngOnInit(): void {
+  }
+  openTargetDetailsForm() {
+    let openDialog = this.dialog.open(TargetDetailsFormComponent, {
+      width: '30vw',
+      minWidth: '400px',
+      maxWidth: '500px',
+    })
+    openDialog.afterClosed().subscribe(() => {
+      
+    })
   }
 
 }

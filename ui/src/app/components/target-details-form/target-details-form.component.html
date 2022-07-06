@@ -1,0 +1,19 @@
+<div mat-dialog-content>
+    <form [formGroup]="targetDetailsForm" class="target-detail-form">
+        <h2>Target Details</h2>
+    <mat-form-field class="full-width" appearance="outline">
+        <mat-label>Target Database</mat-label>
+        <input matInput placeholder="project id" type="text" formControlName="TargetDB" />
+      </mat-form-field>
+    </form>
+      <div mat-dialog-actions class="buttons-container">
+        <button mat-button color="primary" mat-dialog-close>Cancel</button>
+        <button
+          mat-button
+          type="submit"
+          color="primary"
+        >
+          Save
+        </button>
+      </div>
+</div>
