@@ -7,7 +7,7 @@ import IConv, { ICreateIndex, IInterleaveStatus, IPrimaryKey } from '../../model
 import IDumpConfig from '../../model/dump-config'
 import ISessionConfig from '../../model/session-config'
 import ISpannerConfig from '../../model/spanner-config'
-import ITargetDetails from 'src/app/model/target-details'
+import ITargetDetails from '../../model/target-details'
 
 @Injectable({
   providedIn: 'root',
@@ -102,8 +102,8 @@ export class FetchService {
     return this.http.post<ISpannerConfig>(`${this.url}/SetSpannerConfig`, payload)
   }
 
-  setTargetDetails(payload: ITargetDetails) {
-    return this.http.post<ITargetDetails>(`${this.url}/SetTargetDetails`,payload)
+  migrate(payload: ITargetDetails) {
+    return this.http.post<ITargetDetails>(`${this.url}/Migrate`,payload)
   }
 
   InitiateSession() {
