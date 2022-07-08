@@ -1,0 +1,59 @@
+<div class="header">
+    <div class="breadcrumb">
+        <a class="breadcrumb_source" mat-button [routerLink]="'/'">Select Source</a>
+        <span>></span>
+        <a class="breadcrumb_workspace" mat-button [routerLink]="'/workspace'">Configure Schema</a>
+        <span>></span>
+        <a class="breadcrumb_prepare_migration" mat-button [routerLink]="'/prepare-migration'">Prepare Migration</a>
+    </div>
+</div>
+<br>
+<div class="definition-container">
+    <h2>Source and destination Database definitions</h2>
+    <div class="summary">
+        <table mat-table>
+            <ng-container matColumnDef="Title">
+                <th mat-header-cell *matHeaderCellDef>Title</th>
+                <mat-cell>Database engine type</mat-cell>
+                <td mat-cell>Database version</td>
+                <td mat-cell>Connection details</td>
+            </ng-container>
+            <ng-container matColumnDef="Source">
+                <th mat-header-cell *matHeaderCellDef>Source</th>
+            </ng-container>
+            <ng-container matColumnDef="Destination">
+                <th mat-header-cell *matHeaderCellDef>Destination</th>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+    </div>
+</div>
+<br>
+<div class="prerequisites">
+    <mat-card>
+        <mat-card-title>Prerequisites</mat-card-title>
+        <mat-card-subtitle>Before we begin, please ensure you have done the following:</mat-card-subtitle>
+        <hr />
+        <div>
+            <p>
+                <span class="bullet">1</span>
+                <span>Connect Database via Datastream</span>
+            </p>
+            <p>
+                <span class="bullet">2</span>
+                <span (click)="openTargetDetailsForm()" class="link-test">Setup Target details</span>
+            </p>
+        </div>
+    </mat-card>
+    <br />
+</div>
+<div *ngIf="isTargetDetailSet">
+    <h3>Target Details</h3>
+    <span><b>Target Database:</b>{{targetDetails.TargetDB}}</span><br>
+    <span><b>Spanner Dialect:</b>{{targetDetails.Dialect}}</span><br>
+    <span><b>Streaming Config:</b>{{targetDetails.StreamingConfig}}</span><br>
+</div>
+<button mat-raised-button type="submit" color="primary" (click)="migrate()">
+    Migrate
+</button>
