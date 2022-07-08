@@ -48,6 +48,12 @@
     </mat-card>
     <br />
 </div>
-<button mat-raised-button type="submit" color="primary">
+<div *ngIf="isTargetDetailSet">
+    <h3>Target Details</h3>
+    <span><b>Target Database:</b>{{targetDetails.TargetDB}}</span><br>
+    <span><b>Spanner Dialect:</b>{{targetDetails.Dialect}}</span><br>
+    <span><b>Streaming Config:</b>{{targetDetails.StreamingConfig}}</span><br>
+</div>
+<button mat-raised-button type="submit" color="primary" (click)="migrate()">
     Migrate
 </button>

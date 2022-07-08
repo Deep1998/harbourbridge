@@ -3,7 +3,19 @@
         <h2>Target Details</h2>
     <mat-form-field class="full-width" appearance="outline">
         <mat-label>Target Database</mat-label>
-        <input matInput placeholder="project id" type="text" formControlName="TargetDB" />
+        <input matInput placeholder="Target Database" type="text" formControlName="targetDb" />
+      </mat-form-field>
+      <br>
+      <mat-form-field appearance="outline">
+        <mat-label>Target Dialect</mat-label>
+        <mat-select class="input-field" formControlName="dialect" required="true">
+          <mat-option value="google_standard_sql">Google Standard SQL</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <br>
+      <mat-form-field class="full-width" appearance="outline">
+        <mat-label>Streaming config</mat-label>
+        <input matInput placeholder="File path" type="text" formControlName="streamingConfig" />
       </mat-form-field>
     </form>
       <div mat-dialog-actions class="buttons-container">
@@ -12,6 +24,8 @@
           mat-button
           type="submit"
           color="primary"
+          [disabled]="!(targetDetailsForm.valid)"
+          (click)="updateTargetDetails()"
         >
           Save
         </button>

@@ -20,6 +20,7 @@ package webv2
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -88,6 +89,10 @@ type driverConfig struct {
 	Database string `json:"Database"`
 	User     string `json:"User"`
 	Password string `json:"Password"`
+}
+
+type targetDetails struct {
+	TargetDB string `json:TargetDB`
 }
 
 // databaseConnection creates connection with database when using
@@ -949,6 +954,66 @@ func addIndexes(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(convm)
+}
+
+func migrate(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("request started", "method", r.Method, "path", r.URL.Path)
+
+	reqBody, err := ioutil.ReadAll(r.Body)
+
+	if err != nil {
+		log.Println("request's body Read Error")
+		http.Error(w, fmt.Sprintf("Body Read Error : %v", err), http.StatusInternalServerError)
+	}
+
+	details := targetDetails{}
+
+	err = json.Unmarshal(reqBody, &details)
+
+	if err != nil {
+		log.Println("request's Body parse error")
+		http.Error(w, fmt.Sprintf("Request Body parse error : %v", err), http.StatusBadRequest)
+		return
+	}
+
+	sessionState := session.GetSessionState()
+
+	dbURI := fmt.Sprintf("projects/%s/instances/%s/databases/%s", sessionState.GCPProjectID, sessionState.SpannerInstanceID, details.TargetDB)
+	ctx := context.Background()
+	adminClient, err := utils.NewDatabaseAdminClient(ctx)
+	if err != nil {
+		log.Println("can't create admin client")
+		http.Error(w, fmt.Sprintf("can't create admin client : %v", err), http.StatusBadRequest)
+		return
+	}
+	defer adminClient.Close()
+	client, err := utils.GetClient(ctx, dbURI)
+	if err != nil {
+		log.Println("can't create client for db")
+		http.Error(w, fmt.Sprintf("can't create client for db %s: %v", dbURI, err), http.StatusBadRequest)
+		return
+	}
+	defer client.Close()
+
+	err = conversion.CreateOrUpdateDatabase(ctx, adminClient, dbURI, sessionState.Driver, "spanner", sessionState.Conv, nil)
+	if err != nil {
+		log.Println("can't create/update database]")
+		http.Error(w, fmt.Sprintf("can't create/update database: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	helpers.UpdateSessionFile()
+
+	convm := session.ConvWithMetadata{
+		SessionMetadata: sessionState.SessionMetadata,
+		Conv:            *sessionState.Conv,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(convm)
+
+	log.Println("migration completed", "method", r.Method, "path", r.URL.Path, "remoteaddr", r.RemoteAddr)
 }
 
 func checkSpannerNamesValidity(input []string) (bool, []string) {

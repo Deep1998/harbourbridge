@@ -1,44 +1,38 @@
-import { Component, Inject, OnInit } from '@angular/core';
-import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
-import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import ITargetDetails from 'src/app/model/target-details';
+import { Component, OnInit } from '@angular/core'
+import { FormBuilder, FormGroup, Validators } from '@angular/forms'
+import { MatDialogRef } from '@angular/material/dialog'
+import ITargetDetails from 'src/app/model/target-details'
+import { TargetDetailsService } from 'src/app/services/target-details/target-details.service'
 
 @Component({
   selector: 'app-target-details-form',
   templateUrl: './target-details-form.component.html',
-  styleUrls: ['./target-details-form.component.scss']
+  styleUrls: ['./target-details-form.component.scss'],
 })
 export class TargetDetailsFormComponent implements OnInit {
-targetDetailsForm : FormGroup
-  fetch: any;
-  snack: any;
+  targetDetailsForm: FormGroup
   constructor(
     private fb: FormBuilder,
-    @Inject(MAT_DIALOG_DATA) public data: ITargetDetails,
-  private dialogRef: MatDialogRef<TargetDetailsFormComponent>) {
+    private targetDetailService: TargetDetailsService,
+    private dialogRef: MatDialogRef<TargetDetailsFormComponent>
+  ) {
     this.targetDetailsForm = this.fb.group({
-      TargetDB: ['', Validators.required],
+      targetDb: ['', Validators.required],
+      streamingConfig: ['', Validators.required],
+      dialect: ['',Validators.required],
     })
-    dialogRef.disableClose = true
-   }
-
-  ngOnInit(): void {
   }
+
+  ngOnInit(): void {}
 
   updateTargetDetails() {
     let formValue = this.targetDetailsForm.value
     let payload: ITargetDetails = {
-      TargetDB: formValue.TargetDB,
+      TargetDB: formValue.targetDb,
+      Dialect: formValue.dialect,
+      StreamingConfig: formValue.streamingConfig
     }
-
-    this.fetch.setSpannerConfig(payload).subscribe({
-      next: (res: TargetDetailsFormComponent) => {
-        this.snack.openSnackBar('Target details updated successfully', 'Close', 5)
-        this.dialogRef.close({ ...res })
-      },
-      error: (err: any) => {
-        this.snack.openSnackBar(err.message, 'Close')
-      },
-    })
+    this.targetDetailService.updateTargetDetails(payload)
+    this.dialogRef.close()
   }
 }
