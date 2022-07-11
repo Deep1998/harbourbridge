@@ -179,6 +179,9 @@ func WriteToGCS(filePath, fileName, data string) error {
 		return err
 	}
 	defer client.Close()
+	if filePath[len(filePath)-1] != '/' {
+		filePath = filePath + "/"
+	}
 	u, err := url.Parse(filePath)
 	if err != nil {
 		fmt.Printf("parseFilePath: unable to parse file path %s", filePath)
@@ -189,12 +192,8 @@ func WriteToGCS(filePath, fileName, data string) error {
 		return err
 	}
 	bucketName := u.Host
-	prefix := u.Path[1:]
-	if prefix[len(prefix)-1] != '/' {
-		prefix = prefix + "/"
-	}
 	bucket := client.Bucket(bucketName)
-	obj := bucket.Object(prefix + fileName)
+	obj := bucket.Object(u.Path[1:] + fileName)
 
 	w := obj.NewWriter(ctx)
 	if _, err := fmt.Fprint(w, data); err != nil {

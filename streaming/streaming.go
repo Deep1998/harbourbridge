@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
+	"strings"
 	"time"
 
 	dataflow "cloud.google.com/go/dataflow/apiv1beta3"
@@ -103,6 +104,7 @@ func VerifyAndUpdateCfg(streamingCfg *StreamingCfg, dbName string) error {
 	if dfCfg.JobName == "" {
 		// Update names to have more info like dbname.
 		jobName, err := utils.GenerateName("hb-dataflow-" + dbName)
+		jobName = strings.Replace(jobName, "_", "-", -1)
 		if err != nil {
 			return fmt.Errorf("error generating stream name: %v", err)
 		}
@@ -110,6 +112,10 @@ func VerifyAndUpdateCfg(streamingCfg *StreamingCfg, dbName string) error {
 	}
 
 	filePath := streamingCfg.TmpDir
+	if filePath[len(filePath)-1] != '/' {
+		filePath = filePath + "/"
+		streamingCfg.TmpDir = filePath
+	}
 	u, err := url.Parse(filePath)
 	if err != nil {
 		return fmt.Errorf("parseFilePath: unable to parse file path %s", filePath)

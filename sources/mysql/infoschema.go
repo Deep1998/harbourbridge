@@ -357,11 +357,14 @@ func (isi InfoSchemaImpl) StartStreamingMigration(ctx context.Context, client *s
 		err = fmt.Errorf("can't encode session state to JSON: %v", err)
 		return err
 	}
+	fmt.Printf("Writing session file to GCS...")
 	err = utils.WriteToGCS(streamingCfg.TmpDir, "session.json", string(convJSON))
 	if err != nil {
 		err = fmt.Errorf("error writing session file to GCS: %v", err)
 		return err
 	}
+	fmt.Println("Done")
+
 	err = streaming.StartDataflow(ctx, isi.SourceProfile, isi.TargetProfile, streamingCfg)
 	if err != nil {
 		err = fmt.Errorf("error starting dataflow: %v", err)
