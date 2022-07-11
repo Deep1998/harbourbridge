@@ -5,6 +5,7 @@ import { TargetDetailsService } from 'src/app/services/target-details/target-det
 import { FetchService } from 'src/app/services/fetch/fetch.service'
 import { SnackbarService } from 'src/app/services/snackbar/snackbar.service'
 import ITargetDetails from 'src/app/model/target-details'
+import { ISourceDestinationDetails } from 'src/app/model/conv'
 @Component({
   selector: 'app-prepare-migration',
   templateUrl: './prepare-migration.component.html',
@@ -12,6 +13,7 @@ import ITargetDetails from 'src/app/model/target-details'
 })
 export class PrepareMigrationComponent implements OnInit {
   displayedColumns = ['Title', 'Source', 'Destination']
+  dataSource : any =[]
   constructor(
     private dialog: MatDialog,
     private fetch: FetchService,
@@ -20,9 +22,26 @@ export class PrepareMigrationComponent implements OnInit {
   ) {}
 
   isTargetDetailSet: boolean = false;
+  isStreamingCfgSet: boolean = false;
   targetDetails: ITargetDetails = this.targetDetailService.getTargetDetails()
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+      this.fetch.getSourceDestinationSummary().subscribe({
+        next: (res: ISourceDestinationDetails) => {
+          this.dataSource = [
+            {title: 'Database driver', source:res.DatabaseType, target:'Spanner'},
+            {title: 'Number of tables', source:res.SourceTableCount, target: res.SpannerTableCount},
+            {title: 'Number of indexes', source:res.SourceIndexCount, target: res.SpannerIndexCount},
+          ];
+          console.log(this.dataSource)
+        },
+        error: (err: any) => {
+          console.log(err.error)
+          // this.snackbar.openSnackBar(err.error, 'Close')
+        },
+      })
+    
+  }
   openTargetDetailsForm() {
     let dialogRef = this.dialog.open(TargetDetailsFormComponent, {
       width: '30vw',
@@ -32,6 +51,9 @@ export class PrepareMigrationComponent implements OnInit {
     dialogRef.afterClosed().subscribe(() => {
       if (this.targetDetails.TargetDB != '') {
         this.isTargetDetailSet = true;
+      }
+      if (this.targetDetails.StreamingConfig != '') {
+        this.isStreamingCfgSet = true;
       }
     });
     console.log(this.targetDetailService.getTargetDetails())
@@ -43,7 +65,7 @@ export class PrepareMigrationComponent implements OnInit {
         this.snack.openSnackBar('Migration completed successfully', 'Close', 5)
       },
       error: (err: any) => {
-        this.snack.openSnackBar(err.message, 'Close')
+        this.snack.openSnackBar(err.error, 'Close')
       },
     })
   }

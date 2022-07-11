@@ -25,6 +25,7 @@
       .breadcrumb_workspace {
         font-weight: 400;
         font-size: 14px;
+        color: rgba(0, 0, 0, 0.56);
       }
       .breadcrumb_prepare_migration {
         font-weight: 400;
@@ -37,7 +38,7 @@
     }
   }
 .prerequisites {
-    padding: 0 20px;
+    padding: 0;
     width: 600px;
     .mat-card-title {
       font-size: 13pt;
@@ -50,12 +51,12 @@
     p {
       color: #5c5c5c;
       .bullet {
-        position: absolute;
+        position: relative;
         display: inline-block;
         background-color: #e5e5e5;
         padding: 0px 5px 10px 5px;
         margin: 0;
-        border-radius: 10px;
+        border-radius: 12px;
         font-size: 9px;
         height: 9px;
         width: 9px;
@@ -75,16 +76,24 @@
   
 .definition-container {
     max-height: 500px;
-    margin-left: 20px;
     overflow: auto;
     th {
       font-size: 13px;
     }
   }
-  
-  table {
-    width: 30%;
+  .body {
+    margin-left: 20px;
   }
-  .link-test {
+  table {
+    min-width: 30%;
+    max-width: 50%;
+    th {
+     width: 10%;
+    }
+  }
+  .configure {
     color: #1967d2;
+  }
+  .migrate {
+    margin-top: 10px;
   }

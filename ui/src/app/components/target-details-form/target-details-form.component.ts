@@ -18,7 +18,6 @@ export class TargetDetailsFormComponent implements OnInit {
   ) {
     this.targetDetailsForm = this.fb.group({
       targetDb: ['', Validators.required],
-      streamingConfig: ['', Validators.required],
       dialect: ['',Validators.required],
     })
   }
