@@ -92,7 +92,8 @@ type driverConfig struct {
 }
 
 type targetDetails struct {
-	TargetDB string `json:TargetDB`
+	TargetDB     string `json:TargetDB`
+	StreamingCfg string `json:StreamingCfg`
 }
 
 // databaseConnection creates connection with database when using
@@ -145,6 +146,12 @@ func databaseConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	sessionState.Driver = config.Driver
 	sessionState.SessionFile = ""
+	sessionState.SourceDBConnDetails = session.SourceDBConnDetails{
+		Host:     config.Host,
+		Port:     config.Port,
+		User:     config.User,
+		Password: config.Password,
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -256,6 +263,9 @@ func convertSchemaDump(w http.ResponseWriter, r *http.Request) {
 	sessionState.DbName = ""
 	sessionState.SessionFile = ""
 	sessionState.SourceDB = nil
+	sessionState.SourceDBConnDetails = session.SourceDBConnDetails{
+		Path: dc.FilePath,
+	}
 
 	convm := session.ConvWithMetadata{
 		SessionMetadata: sessionMetadata,
@@ -311,6 +321,9 @@ func loadSession(w http.ResponseWriter, r *http.Request) {
 	sessionState.SessionMetadata = sessionMetadata
 	sessionState.Driver = s.Driver
 	sessionState.SessionFile = s.FilePath
+	sessionState.SourceDBConnDetails = session.SourceDBConnDetails{
+		Path: s.FilePath,
+	}
 
 	convm := session.ConvWithMetadata{
 		SessionMetadata: sessionMetadata,
@@ -956,6 +969,26 @@ func addIndexes(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(convm)
 }
 
+func getSourceDestinationSummary(w http.ResponseWriter, r *http.Request) {
+	sessionState := session.GetSessionState()
+	var sourceDestinationDetails sourceDestinationDetails
+	sourceDestinationDetails.DatabaseType = sessionState.Driver
+	sourceDestinationDetails.SourceTableCount = len(sessionState.Conv.SrcSchema)
+	sourceDestinationDetails.SpannerTableCount = len(sessionState.Conv.SpSchema)
+
+	sourceIndexCount, spannerIndexCount := 0, 0
+	for _, spannerSchema := range sessionState.Conv.SpSchema {
+		spannerIndexCount = spannerIndexCount + len(spannerSchema.Indexes)
+	}
+	for _, sourceSchema := range sessionState.Conv.SrcSchema {
+		sourceIndexCount = sourceIndexCount + len(sourceSchema.Indexes)
+	}
+	sourceDestinationDetails.SourceIndexCount = sourceIndexCount
+	sourceDestinationDetails.SpannerIndexCount = spannerIndexCount
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(sourceDestinationDetails)
+}
+
 func migrate(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("request started", "method", r.Method, "path", r.URL.Path)
@@ -978,40 +1011,67 @@ func migrate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionState := session.GetSessionState()
+	sourceDBConnectionDetails := sessionState.SourceDBConnDetails
+	sourceProfileString := fmt.Sprintf("host=%v,port=%v,user=%v,password=%v,dbName=%v",
+		sourceDBConnectionDetails.Host, sourceDBConnectionDetails.Port, sourceDBConnectionDetails.User,
+		sourceDBConnectionDetails.Password, sessionState.DbName)
+	if details.StreamingCfg != "" {
+		sourceProfileString = sourceProfileString + fmt.Sprintf(",streamingCfg=%v", details.StreamingCfg)
+	}
+	sourceProfile, err := profiles.NewSourceProfile(sourceProfileString, sessionState.Driver)
+	if err != nil {
+		log.Println("can't create source profile")
+		http.Error(w, fmt.Sprintf("Can't create source profile : %v", err), http.StatusBadRequest)
+		return
+	}
+	sourceProfile.Driver = sessionState.Driver
+
+	targetProfileString := fmt.Sprintf("project=%v,instance=%v,dbName=%v", sessionState.GCPProjectID, sessionState.SpannerInstanceID, details.TargetDB)
+	targetProfile, err := profiles.NewTargetProfile(targetProfileString)
+	if err != nil {
+		log.Println("can't create target profile")
+		http.Error(w, fmt.Sprintf("Can't create target profile : %v", err), http.StatusBadRequest)
+		return
+	}
+	targetProfile.TargetDb = targetProfile.ToLegacyTargetDb()
 
 	dbURI := fmt.Sprintf("projects/%s/instances/%s/databases/%s", sessionState.GCPProjectID, sessionState.SpannerInstanceID, details.TargetDB)
 	ctx := context.Background()
 	adminClient, err := utils.NewDatabaseAdminClient(ctx)
 	if err != nil {
 		log.Println("can't create admin client")
-		http.Error(w, fmt.Sprintf("can't create admin client : %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Can't create admin client : %v", err), http.StatusBadRequest)
 		return
 	}
 	defer adminClient.Close()
 	client, err := utils.GetClient(ctx, dbURI)
 	if err != nil {
 		log.Println("can't create client for db")
-		http.Error(w, fmt.Sprintf("can't create client for db %s: %v", dbURI, err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Can't create client for db %s: %v", dbURI, err), http.StatusBadRequest)
 		return
 	}
 	defer client.Close()
 
 	err = conversion.CreateOrUpdateDatabase(ctx, adminClient, dbURI, sessionState.Driver, "spanner", sessionState.Conv, nil)
 	if err != nil {
-		log.Println("can't create/update database]")
-		http.Error(w, fmt.Sprintf("can't create/update database: %v", err), http.StatusBadRequest)
+		log.Println("can't create/update database")
+		http.Error(w, fmt.Sprintf("Can't create/update database: %v", err), http.StatusBadRequest)
+		return
+	}
+	_, err = conversion.DataConv(ctx, sourceProfile, targetProfile, nil, client, sessionState.Conv, true, 40)
+	if err != nil {
+		log.Println("can't finish data migration")
+		http.Error(w, fmt.Sprintf("Can't finish data migration: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	helpers.UpdateSessionFile()
-
-	convm := session.ConvWithMetadata{
-		SessionMetadata: sessionState.SessionMetadata,
-		Conv:            *sessionState.Conv,
+	if err = conversion.UpdateDDLForeignKeys(ctx, adminClient, dbURI, sessionState.Conv, nil); err != nil {
+		log.Println("can't perform update schema on db")
+		http.Error(w, fmt.Sprintf("Can't perform update schema on db %s with foreign keys: %v", dbURI, err), http.StatusBadRequest)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(convm)
 
 	log.Println("migration completed", "method", r.Method, "path", r.URL.Path, "remoteaddr", r.RemoteAddr)
 }
@@ -1547,6 +1607,15 @@ type SessionState struct {
 type typeIssue struct {
 	T     string
 	Brief string
+}
+
+type sourceDestinationDetails struct {
+	DatabaseType      string
+	ConnectionDetail  string
+	SourceTableCount  int
+	SpannerTableCount int
+	SourceIndexCount  int
+	SpannerIndexCount int
 }
 
 func addTypeToList(convertedType string, spType string, issues []internal.SchemaIssue, l []typeIssue) []typeIssue {
