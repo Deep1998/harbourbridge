@@ -92,8 +92,8 @@ type driverConfig struct {
 }
 
 type targetDetails struct {
-	TargetDB     string `json:TargetDB`
-	StreamingCfg string `json:StreamingCfg`
+	TargetDB     string `json:"TargetDB"`
+	StreamingCfg string `json:"StreamingConfig"`
 }
 
 // databaseConnection creates connection with database when using
@@ -1018,6 +1018,7 @@ func migrate(w http.ResponseWriter, r *http.Request) {
 	if details.StreamingCfg != "" {
 		sourceProfileString = sourceProfileString + fmt.Sprintf(",streamingCfg=%v", details.StreamingCfg)
 	}
+	fmt.Println(sourceProfileString)
 	sourceProfile, err := profiles.NewSourceProfile(sourceProfileString, sessionState.Driver)
 	if err != nil {
 		log.Println("can't create source profile")
