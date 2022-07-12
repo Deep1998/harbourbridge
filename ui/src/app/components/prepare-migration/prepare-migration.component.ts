@@ -62,7 +62,11 @@ export class PrepareMigrationComponent implements OnInit {
   migrate() {
     this.fetch.migrate(this.targetDetailService.getTargetDetails()).subscribe({
       next: () => {
-        this.snack.openSnackBar('Migration completed successfully', 'Close', 5)
+        if (this.isStreamingCfgSet) {
+          this.snack.openSnackBar('Bulk migration completed successfully', 'Close', 5)
+        } else {
+          this.snack.openSnackBar('Migration completed successfully', 'Close', 5)
+        }
       },
       error: (err: any) => {
         this.snack.openSnackBar(err.error, 'Close')
