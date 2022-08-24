@@ -229,13 +229,13 @@ func LaunchStream(ctx context.Context, sourceProfile profiles.SourceProfile, pro
 
 	dsOp, err := dsClient.CreateStream(ctx, createStreamRequest)
 	if err != nil {
-		fmt.Printf("createStreamRequest: %+v\n", createStreamRequest)
+		fmt.Printf("cannot create stream: createStreamRequest: %+v\n", createStreamRequest)
 		return fmt.Errorf("cannot create stream: %v ", err)
 	}
 
 	_, err = dsOp.Wait(ctx)
 	if err != nil {
-		fmt.Printf("createStreamRequest: %+v\n", createStreamRequest)
+		fmt.Printf("datastream create operation failed: createStreamRequest: %+v\n", createStreamRequest)
 		return fmt.Errorf("datastream create operation failed: %v", err)
 	}
 	fmt.Println("Successfully created stream ", datastreamCfg.StreamId)
@@ -291,13 +291,17 @@ func LaunchDataflowJob(ctx context.Context, targetProfile profiles.TargetProfile
 
 	launchParameter := &dataflowpb.LaunchFlexTemplateParameter{
 		JobName:  dataflowCfg.JobName,
-		Template: &dataflowpb.LaunchFlexTemplateParameter_ContainerSpecGcsPath{ContainerSpecGcsPath: "gs://deepchowdhury-gsql/images/datastream-to-spanner-transform-image-spec.json"},
+		Template: &dataflowpb.LaunchFlexTemplateParameter_ContainerSpecGcsPath{ContainerSpecGcsPath: "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner"},
 		Parameters: map[string]string{
 			"inputFilePattern": inputFilePattern,
 			"streamName":       fmt.Sprintf("projects/%s/locations/%s/streams/%s", project, datastreamCfg.StreamLocation, datastreamCfg.StreamId),
 			"instanceId":       instance,
 			"databaseId":       dbName,
-			"sessionFile":      streamingCfg.TmpDir + "session.json",
+			"sessionFilePath":  streamingCfg.TmpDir + "session.json",
+		},
+		Environment: &dataflowpb.FlexTemplateRuntimeEnvironment{
+			NumWorkers: 60,
+			MaxWorkers: 60,
 		},
 	}
 
