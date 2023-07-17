@@ -23,7 +23,7 @@ The script takes in multiple arguments to orchestrate the pipeline. They are:
 - `metadataInstance`: Spanner instance name to store changestream metadata. Defaults to target spanner instance id.
 - `metadataDatabase`: Spanner database name to store changestream metadata, defaults to `change-stream-metadata`.
 - `startTimestamp`: timestamp from which the changestream should start reading changes in RFC 3339 format, defaults to empty string which is equivalent to the current timestamp.
-- `pubSubDataTopicId`: id pub/sub data topic, pre-existing topics should use the same project as Spanner.
+- `pubSubDataTopicId`: pub/sub data topic id. DO NOT INCLUDE the prefix 'projects/<project_name>/topics/'. Defaults to 'reverse-replication'.
 - `pubSubEndpoint`: Pub/Sub endpoint, defaults to same endpoint as the Dataflow region.
 - `sourceShardsFilePath`: GCS file path for file containing shard info. Details on structure mentioned later.
 - `sessionFilePath`: GCS file path for session file generated via HarbourBridge.

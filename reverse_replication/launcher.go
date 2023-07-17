@@ -63,7 +63,7 @@ func setupGlobalFlags() {
 	flag.StringVar(&metadataInstance, "metadataInstance", "", "spanner instance name to store changestream metadata, defaults to target Spanner instance")
 	flag.StringVar(&metadataDatabase, "metadataDatabase", "change-stream-metadata", "spanner database name to store changestream metadata, defaults to change-stream-metadata")
 	flag.StringVar(&startTimestamp, "startTimestamp", "", "timestamp from which the changestream should start reading changes in RFC 3339 format, defaults to empty string which is equivalent to the current timestamp.")
-	flag.StringVar(&pubSubDataTopicId, "pubSubDataTopicId", "", "id pub/sub data topic, pre-existing topics should use the same project as Spanner.")
+	flag.StringVar(&pubSubDataTopicId, "pubSubDataTopicId", "reverse-replication", "pub/sub data topic id. DO NOT INCLUDE the prefix 'projects/<project_name>/topics/'. Defaults to 'reverse-replication'")
 	flag.StringVar(&pubSubEndpoint, "pubSubEndpoint", "", "pub/sub endpoint, defaults to same endpoint as the dataflow region.")
 	flag.StringVar(&sourceShardsFilePath, "sourceShardsFilePath", "", "gcs file path for file containing shard info")
 	flag.StringVar(&sessionFilePath, "sessionFilePath", "", "gcs file path for session file generated via HarbourBridge")
@@ -97,8 +97,9 @@ func prechecks() error {
 		fmt.Println("metadataDatabase not provided, defaulting to: ", metadataDatabase)
 	}
 	if pubSubDataTopicId == "" {
-		pubSubDataTopicId = "reverse-replication"
-		fmt.Println("pubSubDataTopicId not provided, defaulting to ", pubSubDataTopicId)
+		return fmt.Errorf("please specify a valid pubSubDataTopicId")
+	} else if strings.Contains(pubSubDataTopicId, "/") {
+		return fmt.Errorf("please specify a valid pubSubDataTopicId. '/' is not a valid character for topic id. DO NOT INCLUDE the prefix 'projects/<project_name>/topics/' for this flag.")
 	}
 	if sourceShardsFilePath == "" {
 		return fmt.Errorf("please specify a valid sourceShardsFilePath")
