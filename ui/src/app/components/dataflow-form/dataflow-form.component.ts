@@ -1,5 +1,5 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, FormControl, FormGroup, Validators, ValidationErrors } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { Dataflow } from 'src/app/app.constants';
 import ISpannerConfig from 'src/app/model/spanner-config';
@@ -26,7 +26,9 @@ export class DataflowFormComponent implements OnInit {
       serviceAccountEmail: new FormControl(''),
       vpcHostProjectId: new FormControl(data.GCPProjectID, Validators.required),
       machineType: new FormControl(''),
-      additionalUserLabels: new FormControl(''),
+      // With the json validator, the form still allows nested json values, which is not a valid entry for user labels.
+      // Wwe rely on the Dataflow validation for nested json validation.
+      additionalUserLabels: new FormControl('', [this.jsonValidator]),
       kmsKeyName: new FormControl('', [Validators.pattern('^projects\\/[^\\n\\r]+\\/locations\\/[^\\n\\r]+\\/keyRings\\/[^\\n\\r]+\\/cryptoKeys\\/[^\\n\\r]+$')]),
     })
     this.presetFlagsForm = new FormGroup({
@@ -61,5 +63,15 @@ export class DataflowFormComponent implements OnInit {
   enablePresetFlags(){
     this.disablePresetFlags = false
     this.presetFlagsForm.enable()
+  }
+
+  jsonValidator(control: AbstractControl) : ValidationErrors | null { 
+    let json = control.value;
+    try {
+      JSON.parse(json);
+      return null;
+    } catch (error) {
+      return {'invalidJson': true};
+    }
   }
 }
