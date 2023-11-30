@@ -2248,6 +2248,8 @@ func migrate(w http.ResponseWriter, r *http.Request) {
 
 	details := migrationDetails{}
 	err = json.Unmarshal(reqBody, &details)
+	fmt.Println("MATT-DEBUG: migrationDetails received: ", details)
+
 	if err != nil {
 		log.Println("request's Body parse error")
 		http.Error(w, fmt.Sprintf("Request Body parse error : %v", err), http.StatusBadRequest)

@@ -525,6 +525,8 @@ export class PrepareMigrationComponent implements OnInit {
         location: localStorage.getItem(Dataflow.Location) as string,
         gcsTemplatePath: localStorage.getItem(Dataflow.GcsTemplatePath) as string
       }
+      console.log('MATT-DEBUG: Found this.dataflowConfig.hostProjectId: ', this.dataflowConfig.hostProjectId)
+
       this.isDataflowConfigurationSet = localStorage.getItem(Dataflow.IsDataflowConfigSet) as string === 'true'
       // We only call setDataflowDetailsForShardedMigrations for sharded flows. Non-sharded flows write a streaming config file
       // to GCS, which is fetched by the backend.
@@ -651,6 +653,7 @@ export class PrepareMigrationComponent implements OnInit {
       MigrationMode: this.selectedMigrationMode,
       skipForeignKeys: this.isForeignKeySkipped
     }
+    console.log('MATT-DEBUG: migrate() payload: ', payload)
     this.fetch.migrate(payload).subscribe({
       next: () => {
         if (this.selectedMigrationMode == MigrationModes.dataOnly) {

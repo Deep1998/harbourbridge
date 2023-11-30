@@ -31,7 +31,6 @@ import (
 	"cloud.google.com/go/storage"
 	datastreampb "google.golang.org/genproto/googleapis/cloud/datastream/v1"
 	dataflowpb "google.golang.org/genproto/googleapis/dataflow/v1beta3"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/common/constants"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/common/utils"
@@ -514,19 +513,21 @@ func LaunchStream(ctx context.Context, sourceProfile profiles.SourceProfile, dbL
 	fmt.Println("Successfully created stream ", datastreamCfg.StreamId)
 
 	fmt.Print("Setting stream state to RUNNING...")
-	streamInfo.Name = fmt.Sprintf("projects/%s/locations/%s/streams/%s", projectID, datastreamCfg.StreamLocation, datastreamCfg.StreamId)
-	updateStreamRequest := &datastreampb.UpdateStreamRequest{
-		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"state"}},
-		Stream:     streamInfo,
-	}
-	upOp, err := dsClient.UpdateStream(ctx, updateStreamRequest)
-	if err != nil {
-		return fmt.Errorf("could not create update request: %v", err)
-	}
-	_, err = upOp.Wait(ctx)
-	if err != nil {
-		return fmt.Errorf("update stream operation failed: %v", err)
-	}
+	/*
+		streamInfo.Name = fmt.Sprintf("projects/%s/locations/%s/streams/%s", projectID, datastreamCfg.StreamLocation, datastreamCfg.StreamId)
+		updateStreamRequest := &datastreampb.UpdateStreamRequest{
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"state"}},
+			Stream:     streamInfo,
+		}
+		upOp, err := dsClient.UpdateStream(ctx, updateStreamRequest)
+		if err != nil {
+			return fmt.Errorf("could not create update request: %v", err)
+		}
+		_, err = upOp.Wait(ctx)
+		if err != nil {
+			return fmt.Errorf("update stream operation failed: %v", err)
+		}
+	*/
 	fmt.Println("Done")
 	return nil
 }
@@ -727,6 +728,7 @@ func LaunchDataflowJob(ctx context.Context, targetProfile profiles.TargetProfile
 	if dataflowCfg.VpcHostProjectId != "" {
 		dataflowVpcHostProjectId = dataflowCfg.VpcHostProjectId
 	}
+	fmt.Println("MATT-DEBUG: dataflowVpcHostProjectId set to", dataflowVpcHostProjectId, ", dataflowCfg.VpcHostProjectId was ", dataflowCfg.VpcHostProjectId)
 	if dataflowCfg.GcsTemplatePath != "" {
 		gcsTemplatePath = dataflowCfg.GcsTemplatePath
 	}
@@ -800,6 +802,7 @@ func LaunchDataflowJob(ctx context.Context, targetProfile profiles.TargetProfile
 		Location:        dataflowCfg.Location,
 	}
 	fmt.Println("Created flex template request body...")
+	fmt.Println("MATT-DEBUG: launching dataflow with request: ", req)
 
 	respDf, err := c.LaunchFlexTemplate(ctx, req)
 	if err != nil {
@@ -899,7 +902,7 @@ func StartDatastream(ctx context.Context, streamingCfg StreamingCfg, sourceProfi
 }
 
 func StartDataflow(ctx context.Context, targetProfile profiles.TargetProfile, streamingCfg StreamingCfg, conv *internal.Conv) (internal.DataflowOutput, error) {
-
+	fmt.Println("MATT-DEBUG: streamingCfg: ", streamingCfg)
 	convJSON, err := json.MarshalIndent(conv, "", " ")
 	if err != nil {
 		return internal.DataflowOutput{}, fmt.Errorf("can't encode session state to JSON: %v", err)

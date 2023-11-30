@@ -49,6 +49,7 @@ export class DataflowFormComponent implements OnInit {
     let formValue = this.tunableFlagsForm.value
     localStorage.setItem(Dataflow.Network, formValue.network)
     localStorage.setItem(Dataflow.Subnetwork, formValue.subnetwork)
+    console.log('MATT-DEBUG: Found formValue.vpcHostProjectId: ',formValue.vpcHostProjectId)
     localStorage.setItem(Dataflow.VpcHostProjectId, formValue.vpcHostProjectId)
     localStorage.setItem(Dataflow.MaxWorkers, formValue.maxWorkers)
     localStorage.setItem(Dataflow.NumWorkers, formValue.numWorkers)
