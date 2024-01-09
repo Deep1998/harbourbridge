@@ -44,7 +44,7 @@ func InsertSMTResourceEntry(ctx context.Context, resourceId, jobId, externalId, 
 		if err != nil {
 			return err
 		}
-		// Update the resoruce history table in the same transaction.
+		// Update the resource history table in the same transaction.
 		_, err = updateResourceHistoryWithinTxn(ctx, txn, resourceId)
 		if err != nil {
 			return err
