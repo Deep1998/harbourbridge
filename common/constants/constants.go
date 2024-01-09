@@ -103,5 +103,20 @@ const (
 	SMT_RESOURCE_TABLE string = "SMT_RESOURCE"
 
 	// Reverse Replication
-	REVERSE_REPLICATION_JOB_TYPE string = "reverse-replication"
+	REVERSE_REPLICATION_JOB_TYPE             string = "reverse-replication"
+	REVERSE_REPLICATION_READER_TEMPLATE_PATH string = "gs://aks-test-revrep/templates/flex/Spanner_Change_Streams_to_Sharded_File_Sink" //"gs://dataflow-templates/latest/flex/Spanner_Change_Streams_to_Sharded_File_Sink"
+	REVERSE_REPLICATION_WRITER_TEMPLATE_PATH string = "gs://aks-test-revrep/templates/flex/GCS_to_Sourcedb"                             //"gs://dataflow-templates/latest/flex/GCS_to_Sourcedb"
+
+	// Reverse replication - Reader template.
+	RR_READER_FILTER_NONE  string = "none"
+	RR_READER_FILTER_FWD   string = "forward_migration"
+	RR_READER_REGULAR_MODE string = "regular"
+	RR_READER_RESUME_MODE  string = "resume"
+
+	// Reverse replication - Writer template.
+	RR_WRITER_REGULAR_MODE        string = "regular"
+	RR_WRITER_REPROCESS_MODE      string = "reprocess"
+	RR_WRITER_RESUME_SUCCESS_MODE string = "resumeSuccess"
+	RR_WRITER_RESUME_FAILED_MODE  string = "resumeFailed"
+	RR_WRITER_RESUME_ALL_MODE     string = "resumeAll"
 )
