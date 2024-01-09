@@ -15,12 +15,10 @@ package dataflowaccessor
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"cloud.google.com/go/dataflow/apiv1beta3/dataflowpb"
 	dataflowclient "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/clients/dataflow"
-	storageacc "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/storage"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/logger"
 	"github.com/googleapis/gax-go/v2"
 )
@@ -42,17 +40,4 @@ func (dfA *DataflowAccessorImpl) LaunchFlexTemplate(ctx context.Context, req *da
 		return nil, fmt.Errorf("error launching dataflow template: %v", err)
 	}
 	return respDf, nil
-}
-
-func UnmarshalDataflowTuningConfig(ctx context.Context, filePath string) (DataflowTuningConfig, error) {
-	jsonStr, err := storageacc.ReadAnyFile(ctx, filePath)
-	if err != nil {
-		return DataflowTuningConfig{}, err
-	}
-	tuningCfg := DataflowTuningConfig{}
-	err = json.Unmarshal([]byte(jsonStr), &tuningCfg)
-	if err != nil {
-		return DataflowTuningConfig{}, err
-	}
-	return tuningCfg, nil
 }
