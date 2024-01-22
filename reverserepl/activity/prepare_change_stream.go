@@ -37,17 +37,18 @@ type PrepareChangeStreamOutput struct {
 type PrepareChangeStream struct {
 	Input  *PrepareChangeStreamInput
 	Output *PrepareChangeStreamOutput
+	SpA    spanneraccessor.SpannerAccessor
 }
 
 // This checks is a valid change stream exists or not. If not, it creates one on the provided DbURI.
 func (p *PrepareChangeStream) Transaction(ctx context.Context) error {
 	input := p.Input
-	csExists, err := spanneraccessor.CheckIfChangeStreamExists(ctx, input.ChangeStreamName, input.DbURI)
+	csExists, err := p.SpA.CheckIfChangeStreamExists(ctx, input.ChangeStreamName, input.DbURI)
 	if err != nil {
 		return err
 	}
 	if csExists {
-		err = spanneraccessor.ValidateChangeStreamOptions(ctx, input.ChangeStreamName, input.DbURI)
+		err = p.SpA.ValidateChangeStreamOptions(ctx, input.ChangeStreamName, input.DbURI)
 		if err != nil {
 			p.Output.ExistsWithIncorrectOptions = true
 			return fmt.Errorf("invalid change stream option found: %v", err)
@@ -56,7 +57,7 @@ func (p *PrepareChangeStream) Transaction(ctx context.Context) error {
 		p.Output.Exists = true
 		return nil
 	}
-	err = resource.CreateChangeStreamSMTResource(ctx, input.SmtJobId, input.ChangeStreamName, input.DbURI)
+	err = resource.CreateChangeStreamSMTResource(ctx, p.SpA, input.SmtJobId, input.ChangeStreamName, input.DbURI)
 	if err != nil {
 		return fmt.Errorf("could not create change stream resource: %v", err)
 	}

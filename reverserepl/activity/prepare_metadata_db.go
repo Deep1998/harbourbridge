@@ -35,12 +35,13 @@ type PrepareMetadataDbOutput struct {
 type PrepareMetadataDb struct {
 	Input  *PrepareMetadataDbInput
 	Output *PrepareMetadataDbOutput
+	SpA    spanneraccessor.SpannerAccessor
 }
 
 // Creates a metadata db for reverse replication if one is not already present.
 func (p *PrepareMetadataDb) Transaction(ctx context.Context) error {
 	input := p.Input
-	dbExists, err := spanneraccessor.CheckExistingDb(ctx, input.DbURI)
+	dbExists, err := p.SpA.CheckExistingDb(ctx, input.DbURI)
 	if err != nil {
 		return fmt.Errorf("error checking existing db: %v", err)
 	}
@@ -49,7 +50,7 @@ func (p *PrepareMetadataDb) Transaction(ctx context.Context) error {
 		p.Output.Exists = true
 		return nil
 	}
-	resource.CreateMetadataDbSMTResource(ctx, input.SmtJobId, input.DbURI)
+	resource.CreateMetadataDbSMTResource(ctx, p.SpA, input.SmtJobId, input.DbURI)
 	logger.Log.Info(fmt.Sprintf("Created reverse replication metadata db %s", input.DbURI))
 	p.Output.Created = true
 	return nil

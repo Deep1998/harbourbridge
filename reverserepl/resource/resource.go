@@ -27,21 +27,21 @@ import (
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/dao"
 )
 
-func CreateChangeStreamSMTResource(ctx context.Context, smtJobId, changeStreamName, dbURI string) error {
+func CreateChangeStreamSMTResource(ctx context.Context, spA spanneraccessor.SpannerAccessor, smtJobId, changeStreamName, dbURI string) error {
 	resourceId := fmt.Sprintf("smt-resource-%s", utils.GenerateHashStr())
 	resourceData := spanner.NullJSON{Valid: true, Value: ResourceData_ChangeStream{DbURI: dbURI}}
 	err := dao.InsertSMTResourceEntry(ctx, resourceId, smtJobId, changeStreamName, changeStreamName, "change-stream", resourceData)
 	if err != nil {
 		return fmt.Errorf("error inserting SMT change stream resource: %v", err)
 	}
-	err = spanneraccessor.CreateChangeStream(ctx, changeStreamName, dbURI)
+	err = spA.CreateChangeStream(ctx, changeStreamName, dbURI)
 	if err != nil {
 		return fmt.Errorf("error in change stream creation: %v", err)
 	}
 	return dao.UpdateSMTResourceState(ctx, resourceId, "CREATED")
 }
 
-func CreateMetadataDbSMTResource(ctx context.Context, smtJobId, dbURI string) error {
+func CreateMetadataDbSMTResource(ctx context.Context, spA spanneraccessor.SpannerAccessor, smtJobId, dbURI string) error {
 	_, _, dbName := utils.ParseDbURI(dbURI)
 	resourceId := fmt.Sprintf("smt-resource-%s", utils.GenerateHashStr())
 	resourceData := spanner.NullJSON{Valid: true, Value: ResourceData_MetadataDb{DbURI: dbURI}}
@@ -49,14 +49,14 @@ func CreateMetadataDbSMTResource(ctx context.Context, smtJobId, dbURI string) er
 	if err != nil {
 		return fmt.Errorf("error inserting SMT metadata db resource: %v", err)
 	}
-	err = spanneraccessor.CreateEmptyDatabase(ctx, dbURI)
+	err = spA.CreateEmptyDatabase(ctx, dbURI)
 	if err != nil {
 		return fmt.Errorf("error creating db: %v", err)
 	}
 	return dao.UpdateSMTResourceState(ctx, resourceId, "CREATED")
 }
 
-func CreateBucketSMTResource(ctx context.Context, smtJobId, bucketName, projectId, location string, matchesPrefix []string, ttl int64) error {
+func CreateBucketSMTResource(ctx context.Context, sa storageaccessor.StorageAccessor, smtJobId, bucketName, projectId, location string, matchesPrefix []string, ttl int64) error {
 	resourceId := fmt.Sprintf("smt-resource-%s", utils.GenerateHashStr())
 	resourceData := spanner.NullJSON{Valid: true, Value: ResourceData_GCSBucket{
 		Name:          bucketName,
@@ -69,21 +69,21 @@ func CreateBucketSMTResource(ctx context.Context, smtJobId, bucketName, projectI
 	if err != nil {
 		return fmt.Errorf("error inserting SMT bucket resource: %v", err)
 	}
-	err = storageaccessor.CreateGCSBucketWithLifecycle(ctx, bucketName, projectId, location, matchesPrefix, ttl)
+	err = sa.CreateGCSBucketWithLifecycle(ctx, bucketName, projectId, location, matchesPrefix, ttl)
 	if err != nil {
 		return fmt.Errorf("error in bucket creation: %v", err)
 	}
 	return dao.UpdateSMTResourceState(ctx, resourceId, "CREATED")
 }
 
-func CreateDataflowSMTResource(ctx context.Context, smtJobId string, launchRequest *dataflowpb.LaunchFlexTemplateRequest) (string, error) {
+func CreateDataflowSMTResource(ctx context.Context, da dataflowaccessor.DataflowAccessor, smtJobId string, launchRequest *dataflowpb.LaunchFlexTemplateRequest) (string, error) {
 	resourceId := fmt.Sprintf("smt-resource-%s", utils.GenerateHashStr())
 	resourceData := spanner.NullJSON{Valid: true, Value: ResourceData_Dataflow{LaunchRequest: launchRequest, EquivalentGcloudCmd: dataflowutils.GetGcloudDataflowCommand(launchRequest)}}
 	err := dao.InsertSMTResourceEntry(ctx, resourceId, smtJobId, "", launchRequest.LaunchParameter.JobName, "dataflow", resourceData)
 	if err != nil {
 		return "", fmt.Errorf("error inserting SMT dataflow resource: %v", err)
 	}
-	response, err := dataflowaccessor.LaunchDataflowJob(ctx, launchRequest)
+	response, err := da.LaunchFlexTemplate(ctx, launchRequest)
 	if err != nil {
 		return "", fmt.Errorf("error in launching dataflow job: %v", err)
 	}

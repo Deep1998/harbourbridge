@@ -580,7 +580,7 @@ func CompareSchema(sessionFileConv, actualSpannerConv *internal.Conv) error {
 			} else {
 				if sessionColDef.Name != spannerColDef.Name ||
 					sessionColDef.T.IsArray != spannerColDef.T.IsArray || sessionColDef.T.Len != spannerColDef.T.Len || sessionColDef.T.Name != spannerColDef.T.Name || sessionColDef.NotNull != spannerColDef.NotNull {
-						return fmt.Errorf("column detail for table %v don't match: session column: %v, spanner column: %v", sessionTable.Name, sessionColDef, spannerColDef)
+					return fmt.Errorf("column detail for table %v don't match: session column: %v, spanner column: %v", sessionTable.Name, sessionColDef, spannerColDef)
 				}
 			}
 		}
@@ -632,6 +632,15 @@ func FindInPrimaryKey(id string, primaryKeys []ddl.IndexKey) bool {
 
 	for _, pk := range primaryKeys {
 		if id == pk.ColId {
+			return true
+		}
+	}
+	return false
+}
+
+func Contains[S ~[]E, E comparable](s S, v E) bool {
+	for i := range s {
+		if v == s[i] {
 			return true
 		}
 	}

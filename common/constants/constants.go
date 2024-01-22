@@ -104,8 +104,8 @@ const (
 
 	// Reverse Replication
 	REVERSE_REPLICATION_JOB_TYPE             string = "reverse-replication"
-	REVERSE_REPLICATION_READER_TEMPLATE_PATH string = "gs://aks-test-revrep/templates/flex/Spanner_Change_Streams_to_Sharded_File_Sink" //"gs://dataflow-templates/latest/flex/Spanner_Change_Streams_to_Sharded_File_Sink"
-	REVERSE_REPLICATION_WRITER_TEMPLATE_PATH string = "gs://aks-test-revrep/templates/flex/GCS_to_Sourcedb"                             //"gs://dataflow-templates/latest/flex/GCS_to_Sourcedb"
+	REVERSE_REPLICATION_READER_TEMPLATE_PATH string = "gs://dataflow-templates-us-central2/2024-01-09-00_RC01/flex/Spanner_Change_Streams_to_Sharded_File_Sink"
+	REVERSE_REPLICATION_WRITER_TEMPLATE_PATH string = "gs://dataflow-templates-us-central2/2024-01-09-00_RC01/flex/GCS_to_Sourcedb"
 
 	// Reverse replication - Reader template.
 	RR_READER_FILTER_NONE  string = "none"

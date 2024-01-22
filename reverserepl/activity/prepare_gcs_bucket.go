@@ -41,26 +41,27 @@ type PrepareGcsBucketOutput struct {
 
 type PrepareGcsBucket struct {
 	Input *PrepareGcsBucketInput
+	SA    storageaccessor.StorageAccessor
 }
 
 // This creates a GCS bucket if based on flag input. It subsequently uploads local files to the bucket.
 func (p *PrepareGcsBucket) Transaction(ctx context.Context) error {
 	input := p.Input
 	if input.IsSMTBucketRequired {
-		err := resource.CreateBucketSMTResource(ctx, input.SmtJobId, input.SmtBucketName, input.SpannerProjectId, input.SpannerLocation, nil, 45)
+		err := resource.CreateBucketSMTResource(ctx, p.SA, input.SmtJobId, input.SmtBucketName, input.SpannerProjectId, input.SpannerLocation, nil, 45)
 		if err != nil {
 			return err
 		}
 		logger.Log.Info(fmt.Sprintf("Created bucket: %s", input.SmtBucketName))
 		if !strings.HasPrefix(input.SessionFilePath, constants.GCS_FILE_PREFIX) {
-			err := storageaccessor.UploadLocalFileToGCS(ctx, fmt.Sprintf("%s%s/", constants.GCS_FILE_PREFIX, input.SmtBucketName), "session.json", input.SessionFilePath)
+			err := p.SA.UploadLocalFileToGCS(ctx, fmt.Sprintf("%s%s/", constants.GCS_FILE_PREFIX, input.SmtBucketName), "session.json", input.SessionFilePath)
 			if err != nil {
 				return fmt.Errorf("could not upload session file to GCS: %v", err)
 			}
 			logger.Log.Debug(fmt.Sprintf("Uploaded local session file: %s to bucket %s", input.SessionFilePath, input.SmtBucketName))
 		}
 		if !strings.HasPrefix(input.SourceConnectionConfig, constants.GCS_FILE_PREFIX) {
-			err := storageaccessor.UploadLocalFileToGCS(ctx, fmt.Sprintf("%s%s/", constants.GCS_FILE_PREFIX, input.SmtBucketName), "source-connection-config.json", input.SourceConnectionConfig)
+			err := p.SA.UploadLocalFileToGCS(ctx, fmt.Sprintf("%s%s/", constants.GCS_FILE_PREFIX, input.SmtBucketName), "source-connection-config.json", input.SourceConnectionConfig)
 			if err != nil {
 				return fmt.Errorf("could not upload source connection config file to GCS: %v", err)
 			}

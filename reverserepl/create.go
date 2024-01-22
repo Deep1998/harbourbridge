@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"slices"
 	"strings"
 
 	spanneraccessor "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/spanner"
@@ -85,7 +84,7 @@ func validateAndUpdateJobData(ctx context.Context, request *JobData, uuid string
 	}
 	if request.FiltrationMode == "" {
 		request.FiltrationMode = constants.RR_READER_FILTER_FWD
-	} else if !slices.Contains([]string{constants.RR_READER_FILTER_FWD, constants.RR_READER_FILTER_NONE}, request.FiltrationMode) {
+	} else if !utils.Contains([]string{constants.RR_READER_FILTER_FWD, constants.RR_READER_FILTER_NONE}, request.FiltrationMode) {
 		return fmt.Errorf("found filtrationMode %s, only allowed values are [%s, %s]", request.FiltrationMode, constants.RR_READER_FILTER_FWD, constants.RR_READER_FILTER_NONE)
 	}
 	if request.TimerInterval < 1 {
@@ -95,6 +94,15 @@ func validateAndUpdateJobData(ctx context.Context, request *JobData, uuid string
 		request.WindowDuration = "10s"
 	}
 
+	if request.ShardingCustomJarPath != "" && request.ShardingCustomClassName == "" {
+		return fmt.Errorf("found non-empty value for ShardingCustomJarPath, but empty value for ShardingCustomClassName")
+	}
+	if request.ShardingCustomJarPath == "" && request.ShardingCustomClassName != "" {
+		return fmt.Errorf("found non-empty value for ShardingCustomClassName, but empty value for ShardingCustomJarPath")
+	}
+	if request.ShardingCustomJarPath != "" && !strings.HasPrefix(request.ShardingCustomJarPath, constants.GCS_FILE_PREFIX) {
+		return fmt.Errorf("please specify a valid GCS path for ShardingCustomJarPath, starting with gs://")
+	}
 	// Replace '-' with '_' since hyphens are not allowed in cs names.
 	request.ChangeStreamName = strings.Replace(request.ChangeStreamName, "-", "_", -1)
 
@@ -171,24 +179,26 @@ func CreateWorkflow(ctx context.Context, request JobData) error {
 		},
 		&rractivity.PrepareDataflowReader{
 			Input: &rractivity.PrepareDataflowReaderInput{
-				SmtJobId:             smtJobId,
-				ChangeStreamName:     request.ChangeStreamName,
-				InstanceId:           request.InstanceId,
-				DatabaseId:           request.DatabaseId,
-				SpannerProjectId:     request.SpannerProjectId,
-				SessionFilePath:      request.SessionFileGcsPath,
-				SourceShardsFilePath: request.SourceConnectionConfigGcsPath,
-				MetadataInstance:     request.MetadataInstance,
-				MetadataDatabase:     request.MetadataDatabase,
-				GcsOutputDirectory:   request.GcsDataDirectory,
-				StartTimestamp:       request.StartTimestamp,
-				EndTimestamp:         request.EndTimestamp,
-				WindowDuration:       request.WindowDuration,
-				FiltrationMode:       request.FiltrationMode,
-				MetadataTableSuffix:  request.MetadataTableSuffix,
-				SkipDirectoryName:    request.SkipDirectoryName,
-				TuningCfg:            request.ReaderCfg,
-				SpannerLocation:      request.SpannerLocation,
+				SmtJobId:                smtJobId,
+				ChangeStreamName:        request.ChangeStreamName,
+				InstanceId:              request.InstanceId,
+				DatabaseId:              request.DatabaseId,
+				SpannerProjectId:        request.SpannerProjectId,
+				SessionFilePath:         request.SessionFileGcsPath,
+				SourceShardsFilePath:    request.SourceConnectionConfigGcsPath,
+				MetadataInstance:        request.MetadataInstance,
+				MetadataDatabase:        request.MetadataDatabase,
+				GcsOutputDirectory:      request.GcsDataDirectory,
+				StartTimestamp:          request.StartTimestamp,
+				EndTimestamp:            request.EndTimestamp,
+				WindowDuration:          request.WindowDuration,
+				FiltrationMode:          request.FiltrationMode,
+				MetadataTableSuffix:     request.MetadataTableSuffix,
+				SkipDirectoryName:       request.SkipDirectoryName,
+				ShardingCustomJarPath:   request.ShardingCustomJarPath,
+				ShardingCustomClassName: request.ShardingCustomClassName,
+				TuningCfg:               request.ReaderCfg,
+				SpannerLocation:         request.SpannerLocation,
 			},
 			Output: &rractivity.PrepareDataflowReaderOutput{},
 		},

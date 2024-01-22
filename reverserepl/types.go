@@ -21,22 +21,24 @@ type JobData struct {
 	SourceConnectionConfig string `json:"sourceConnectionConfig"`
 	SpannerProjectId       string `json:"spannerProjectId"`
 	// Optional parameters.
-	JobName                string `json:"jobName"`
-	SourceType             string `json:"sourceType"`
-	MetadataInstance       string `json:"metadataInstance"`
-	MetadataDatabase       string `json:"metadataDatabase"`
-	GcsDataDirectory       string `json:"gcsDataDirectory"`
-	ChangeStreamName       string `json:"changeStreamName"`
-	StartTimestamp         string `json:"startTimestamp"`
-	EndTimestamp           string `json:"endTimestamp"`
-	WindowDuration         string `json:"windowDuration"`
-	FiltrationMode         string `json:"filtrationMode"`
-	SourceDbTimezoneOffset string `json:"sourceDbTimezoneOffset"`
-	TimerInterval          int    `json:"timerInterval"`
-	MetadataTableSuffix    string `json:"metadataTableSuffix"`
-	SkipDirectoryName      string `json:"skipDirectoryName"`
-	ReaderCfg              string `json:"readerCfg"`
-	WriterCfg              string `json:"writerCfg"`
+	JobName                 string `json:"jobName"`
+	SourceType              string `json:"sourceType"`
+	MetadataInstance        string `json:"metadataInstance"`
+	MetadataDatabase        string `json:"metadataDatabase"`
+	GcsDataDirectory        string `json:"gcsDataDirectory"`
+	ChangeStreamName        string `json:"changeStreamName"`
+	StartTimestamp          string `json:"startTimestamp"`
+	EndTimestamp            string `json:"endTimestamp"`
+	WindowDuration          string `json:"windowDuration"`
+	FiltrationMode          string `json:"filtrationMode"`
+	SourceDbTimezoneOffset  string `json:"sourceDbTimezoneOffset"`
+	TimerInterval           int    `json:"timerInterval"`
+	MetadataTableSuffix     string `json:"metadataTableSuffix"`
+	SkipDirectoryName       string `json:"skipDirectoryName"`
+	ShardingCustomJarPath   string `json:"shardingCustomJarPath"`
+	ShardingCustomClassName string `json:"shardingCustomClassName"`
+	ReaderCfg               string `json:"readerCfg"`
+	WriterCfg               string `json:"writerCfg"`
 	// SMT generated - These fields are for use internally by SMT. These should not be configured when passing input.
 	IsSMTBucketRequired bool   `json:"isSMTBucketRequired"`
 	SmtBucketName       string `json:"smtBucketName"`

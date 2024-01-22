@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	dataflowaccessor "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/dataflow"
+	storageaccessor "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/storage"
 	dataflowutils "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/utils/dataflow"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/common/constants"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/common/utils"
@@ -50,12 +51,14 @@ type PrepareDataflowWriterOutput struct {
 type PrepareDataflowWriter struct {
 	Input  *PrepareDataflowWriterInput
 	Output *PrepareDataflowWriterOutput
+	DfA    dataflowaccessor.DataflowAccessor
+	SA     storageaccessor.StorageAccessor
 }
 
 // Launches the writer dataflow job.
 func (p *PrepareDataflowWriter) Transaction(ctx context.Context) error {
 	input := p.Input
-	writerTuningCfg, err := dataflowutils.UnmarshalDataflowTuningConfig(ctx, input.TuningCfg)
+	writerTuningCfg, err := dataflowutils.UnmarshalDataflowTuningConfig(ctx, p.SA, input.TuningCfg)
 	if err != nil {
 		return fmt.Errorf("error reading writer tuning config %s: %v", input.TuningCfg, err)
 	}
@@ -82,11 +85,12 @@ func (p *PrepareDataflowWriter) Transaction(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	dfJobId, err := resource.CreateDataflowSMTResource(ctx, input.SmtJobId, dfLaunchReq)
+	dfJobId, err := resource.CreateDataflowSMTResource(ctx, p.DfA, input.SmtJobId, dfLaunchReq)
 	if err != nil {
 		return err
 	}
 	logger.Log.Info(fmt.Sprintf("Launched writer job with id: %s", dfJobId))
+	logger.Log.Info(fmt.Sprintf("\nEquivalent gCloud command for job %s:\n%s\n\n", dfLaunchReq.LaunchParameter.JobName, dataflowutils.GetGcloudDataflowCommand(dfLaunchReq)))
 	p.Output.JobId = dfJobId
 	return nil
 }
@@ -100,7 +104,7 @@ func validateUpdateWriterTuningCfg(cfg *dataflowaccessor.DataflowTuningConfig, s
 		cfg.ProjectId = spannerProjectId
 	}
 	if cfg.JobName == "" {
-		cfg.JobName = fmt.Sprintf("smt-writer-job-%s", utils.GenerateHashStr())
+		cfg.JobName = fmt.Sprintf("smt-reverse-replication-writer-%s", utils.GenerateHashStr())
 	}
 	if cfg.Location == "" {
 		cfg.Location = spannerLocation
@@ -114,7 +118,7 @@ func validateUpdateWriterTuningCfg(cfg *dataflowaccessor.DataflowTuningConfig, s
 	if cfg.MachineType == "" {
 		cfg.MachineType = "n1-standard-2"
 	}
-	cfg.AdditionalUserLabels["smt-writer-job"] = smtJobId
+	cfg.AdditionalUserLabels["smt-reverse-replication-writer"] = smtJobId
 	if cfg.GcsTemplatePath == "" {
 		cfg.GcsTemplatePath = constants.REVERSE_REPLICATION_WRITER_TEMPLATE_PATH
 	}

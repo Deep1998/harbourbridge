@@ -19,6 +19,7 @@ import (
 	"slices"
 
 	dataflowaccessor "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/dataflow"
+	storageaccessor "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/storage"
 	dataflowutils "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/utils/dataflow"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/common/constants"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/common/utils"
@@ -27,24 +28,26 @@ import (
 )
 
 type PrepareDataflowReaderInput struct {
-	SmtJobId             string
-	ChangeStreamName     string
-	InstanceId           string
-	DatabaseId           string
-	SpannerProjectId     string
-	SessionFilePath      string
-	SourceShardsFilePath string
-	MetadataInstance     string
-	MetadataDatabase     string
-	GcsOutputDirectory   string
-	StartTimestamp       string
-	EndTimestamp         string
-	WindowDuration       string
-	FiltrationMode       string
-	MetadataTableSuffix  string
-	SkipDirectoryName    string
-	TuningCfg            string
-	SpannerLocation      string
+	SmtJobId                string
+	ChangeStreamName        string
+	InstanceId              string
+	DatabaseId              string
+	SpannerProjectId        string
+	SessionFilePath         string
+	SourceShardsFilePath    string
+	MetadataInstance        string
+	MetadataDatabase        string
+	GcsOutputDirectory      string
+	StartTimestamp          string
+	EndTimestamp            string
+	WindowDuration          string
+	FiltrationMode          string
+	MetadataTableSuffix     string
+	SkipDirectoryName       string
+	ShardingCustomJarPath   string
+	ShardingCustomClassName string
+	TuningCfg               string
+	SpannerLocation         string
 }
 
 type PrepareDataflowReaderOutput struct {
@@ -54,12 +57,14 @@ type PrepareDataflowReaderOutput struct {
 type PrepareDataflowReader struct {
 	Input  *PrepareDataflowReaderInput
 	Output *PrepareDataflowReaderOutput
+	DfA    dataflowaccessor.DataflowAccessor
+	SA     storageaccessor.StorageAccessor
 }
 
 // Launches the reader dataflow job.
 func (p *PrepareDataflowReader) Transaction(ctx context.Context) error {
 	input := p.Input
-	readerTuningCfg, err := dataflowutils.UnmarshalDataflowTuningConfig(ctx, input.TuningCfg)
+	readerTuningCfg, err := dataflowutils.UnmarshalDataflowTuningConfig(ctx, p.SA, input.TuningCfg)
 	if err != nil {
 		return fmt.Errorf("error reading reader tuning config %s: %v", input.TuningCfg, err)
 	}
@@ -86,15 +91,21 @@ func (p *PrepareDataflowReader) Transaction(ctx context.Context) error {
 		"runIdentifier":        input.SmtJobId,
 		"runMode":              constants.RR_READER_REGULAR_MODE,
 	}
+	// Cannot send empty strings since the template expects GCS file paths.
+	if input.ShardingCustomJarPath != "" {
+		params["shardingCustomJarPath"] = input.ShardingCustomJarPath
+		params["shardingCustomClassName"] = input.ShardingCustomClassName
+	}
 	dfLaunchReq, err := dataflowutils.GetDataflowLaunchRequest(params, readerTuningCfg)
 	if err != nil {
 		return err
 	}
-	dfJobId, err := resource.CreateDataflowSMTResource(ctx, input.SmtJobId, dfLaunchReq)
+	dfJobId, err := resource.CreateDataflowSMTResource(ctx, p.DfA, input.SmtJobId, dfLaunchReq)
 	if err != nil {
 		return err
 	}
 	logger.Log.Info(fmt.Sprintf("Launched reader job with id: %s", dfJobId))
+	logger.Log.Info(fmt.Sprintf("\nEquivalent gCloud command for job %s:\n%s\n\n", dfLaunchReq.LaunchParameter.JobName, dataflowutils.GetGcloudDataflowCommand(dfLaunchReq)))
 	p.Output.JobId = dfJobId
 	return nil
 }
@@ -108,7 +119,7 @@ func validateUpdateReaderTuningCfg(cfg *dataflowaccessor.DataflowTuningConfig, s
 		cfg.ProjectId = spannerProjectId
 	}
 	if cfg.JobName == "" {
-		cfg.JobName = fmt.Sprintf("smt-reader-job-%s", utils.GenerateHashStr())
+		cfg.JobName = fmt.Sprintf("smt-reverse-replication-reader-%s", utils.GenerateHashStr())
 	}
 	if cfg.Location == "" {
 		cfg.Location = spannerLocation
@@ -122,7 +133,7 @@ func validateUpdateReaderTuningCfg(cfg *dataflowaccessor.DataflowTuningConfig, s
 	if cfg.MachineType == "" {
 		cfg.MachineType = "n1-standard-2"
 	}
-	cfg.AdditionalUserLabels["smt-reader-job"] = smtJobId
+	cfg.AdditionalUserLabels["smt-reverse-replication-reader"] = smtJobId
 	if cfg.GcsTemplatePath == "" {
 		cfg.GcsTemplatePath = constants.REVERSE_REPLICATION_READER_TEMPLATE_PATH
 	}
