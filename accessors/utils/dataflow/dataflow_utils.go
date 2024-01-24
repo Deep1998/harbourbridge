@@ -11,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// This is a package is kept with accessors because some functions import other accessors.
+// The common/utils package should not import any SMT dependency.
 package dataflowutils
 
 import (

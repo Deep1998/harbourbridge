@@ -14,11 +14,14 @@
 package dataflowutils
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"testing"
 
 	"cloud.google.com/go/dataflow/apiv1beta3/dataflowpb"
 	dataflowaccessor "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/dataflow"
+	storageaccessor "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/storage"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/logger"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -219,4 +222,112 @@ func EquateLaunchFlexTemplateRequest(df1 *dataflowpb.LaunchFlexTemplateRequest, 
 		cmp.Equal(lp1.Environment.AdditionalUserLabels, lp2.Environment.AdditionalUserLabels) &&
 		cmp.Equal(lp1.Environment.AdditionalExperiments, lp2.Environment.AdditionalExperiments) &&
 		lp1.GetContainerSpecGcsPath() == lp2.GetContainerSpecGcsPath())
+}
+
+type StorageAccessorMock struct {
+	storageaccessor.StorageAccessorImpl
+}
+
+var readAnyFileMock func(ctx context.Context, filePath string) (string, error)
+
+func (sam StorageAccessorMock) ReadAnyFile(ctx context.Context, filePath string) (string, error) {
+	return readAnyFileMock(ctx, filePath)
+}
+
+func TestUnmarshalDataflowTuningConfig(t *testing.T) {
+	testCases := []struct {
+		name            string
+		readAnyFileMock func(ctx context.Context, filePath string) (string, error)
+		expectError     bool
+		want            dataflowaccessor.DataflowTuningConfig
+	}{
+		{
+			name: "Basic",
+			readAnyFileMock: func(ctx context.Context, filePath string) (string, error) {
+				return `{
+					"projectId": "test-project",
+					"jobName": "test-job-name",
+					"location": "us-central1",
+					"network": "test-network",
+					"subnetwork": "test-subnetwork",
+					"hostProjectId": "test-host-project",
+					"maxWorkers": 3,
+					"numWorkers": 2,
+					"serviceAccountEmail": "abc@xyz.com",
+					"machineType": "n1-standard-8",
+					"additionalUserLabels": {"my": "label"},
+					"kmsKeyName": "test-key",
+					"gcsTemplatePath": "gs://path",
+					"additionalExperiments": ["xyz","123"],
+					"enableStreamingEngine": true
+				}`, nil
+			},
+			expectError: false,
+			want: dataflowaccessor.DataflowTuningConfig{
+				ProjectId:             "test-project",
+				JobName:               "test-job-name",
+				Location:              "us-central1",
+				Network:               "test-network",
+				Subnetwork:            "test-subnetwork",
+				VpcHostProjectId:      "test-host-project",
+				MaxWorkers:            3,
+				NumWorkers:            2,
+				ServiceAccountEmail:   "abc@xyz.com",
+				MachineType:           "n1-standard-8",
+				AdditionalUserLabels:  map[string]string{"my": "label"},
+				KmsKeyName:            "test-key",
+				GcsTemplatePath:       "gs://path",
+				AdditionalExperiments: []string{"xyz", "123"},
+				EnableStreamingEngine: true,
+			},
+		},
+		{
+			name: "Defaults",
+			readAnyFileMock: func(ctx context.Context, filePath string) (string, error) {
+				return `{}`, nil
+			},
+			expectError: false,
+			want: dataflowaccessor.DataflowTuningConfig{
+				ProjectId:             "",
+				JobName:               "",
+				Location:              "",
+				Network:               "",
+				Subnetwork:            "",
+				VpcHostProjectId:      "",
+				MaxWorkers:            0,
+				NumWorkers:            0,
+				ServiceAccountEmail:   "",
+				MachineType:           "",
+				AdditionalUserLabels:  nil,
+				KmsKeyName:            "",
+				GcsTemplatePath:       "",
+				AdditionalExperiments: nil,
+				EnableStreamingEngine: false,
+			},
+		},
+		{
+			name: "ReadAnyFile throws error",
+			readAnyFileMock: func(ctx context.Context, filePath string) (string, error) {
+				return "", fmt.Errorf("test error")
+			},
+			expectError: true,
+			want:        dataflowaccessor.DataflowTuningConfig{},
+		},
+		{
+			name: "Json unmarshall throws error",
+			readAnyFileMock: func(ctx context.Context, filePath string) (string, error) {
+				return "{\"abc\"", nil
+			},
+			expectError: true,
+			want:        dataflowaccessor.DataflowTuningConfig{},
+		},
+	}
+	ctx := context.Background()
+	saMock := StorageAccessorMock{}
+	for _, tc := range testCases {
+		readAnyFileMock = tc.readAnyFileMock
+		got, err := UnmarshalDataflowTuningConfig(ctx, &saMock, "unused/path/due/to/mock")
+		assert.Equal(t, tc.expectError, err != nil)
+		assert.Equal(t, tc.want, got)
+	}
 }
