@@ -157,8 +157,8 @@ func formatAdditionalUserLabels(labels map[string]string) string {
 	return strings.Join(res, ",")
 }
 
-func UnmarshalDataflowTuningConfig(ctx context.Context, filePath string) (dataflowaccessor.DataflowTuningConfig, error) {
-	jsonStr, err := storageaccessor.ReadAnyFile(ctx, filePath)
+func UnmarshalDataflowTuningConfig(ctx context.Context, sa storageaccessor.StorageAccessor, filePath string) (dataflowaccessor.DataflowTuningConfig, error) {
+	jsonStr, err := sa.ReadAnyFile(ctx, filePath)
 	if err != nil {
 		return dataflowaccessor.DataflowTuningConfig{}, err
 	}
