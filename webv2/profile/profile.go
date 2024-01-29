@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	datastream "cloud.google.com/go/datastream/apiv1"
+	storageaccessor "github.com/GoogleCloudPlatform/spanner-migration-tool/accessors/storage"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/common/constants"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/common/utils"
 	"github.com/GoogleCloudPlatform/spanner-migration-tool/streaming"
@@ -153,6 +154,7 @@ func CreateConnectionProfile(w http.ResponseWriter, r *http.Request) {
 		ValidateOnly: details.ValidateOnly,
 	}
 	var bucketName string
+	sa := storageaccessor.StorageAccessorImpl{}
 	if !details.IsSource {
 
 		if sessionState.IsSharded {
@@ -160,7 +162,7 @@ func CreateConnectionProfile(w http.ResponseWriter, r *http.Request) {
 		} else {
 			bucketName = strings.ToLower(sessionState.Conv.Audit.MigrationRequestId)
 		}
-		err = utils.CreateGCSBucket(bucketName, sessionState.GCPProjectID, sessionState.Region)
+		err = sa.CreateGCSBucket(ctx, bucketName, sessionState.GCPProjectID, sessionState.Region)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error while creating bucket: %v", err), http.StatusBadRequest)
 			return
